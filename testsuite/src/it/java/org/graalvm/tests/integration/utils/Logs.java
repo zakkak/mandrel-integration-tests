@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class Logs {
     private static final Logger LOGGER = Logger.getLogger(Logs.class.getName());
-    private static final Pattern warnErrorDetectionPattern = Pattern.compile("(?i:.*(ERROR|WARN).*)");
+    private static final Pattern WARN_ERROR_DETECTION_PATTERN = Pattern.compile("(?i:.*(ERROR|WARN|No such file|Not found).*)");
     public static final long SKIP = -1L;
 
     public static void checkLog(String testClass, String testMethod, Apps app, File log) throws IOException {
@@ -55,7 +55,7 @@ public class Logs {
             Set<String> offendingLines = new HashSet<>();
             while (sc.hasNextLine()) {
                 String line = sc.nextLine();
-                boolean error = warnErrorDetectionPattern.matcher(line).matches();
+                boolean error = WARN_ERROR_DETECTION_PATTERN.matcher(line).matches();
                 boolean whiteListed = false;
                 if (error) {
                     for (Pattern p : whitelistPatterns) {
@@ -78,26 +78,37 @@ public class Logs {
         }
     }
 
-    public static void checkThreshold(Apps app, long rssKb, long timeToFirstOKRequest) {
-        if (app.thresholdProperties.isEmpty() && (timeToFirstOKRequest != SKIP || rssKb != SKIP)) {
+    public static void checkThreshold(Apps app, String mode, long rssKb, long timeToFirstOKRequest, long timeToFinishMs) {
+        if (app.thresholdProperties.isEmpty() && (timeToFirstOKRequest != SKIP || rssKb != SKIP || timeToFinishMs != SKIP)) {
             LOGGER.warn("It seem there is no " + BASE_DIR + File.separator + app.dir + File.separator + "threshold.properties. " +
                     "Skipping checking thresholds.");
             return;
         }
-        String propPrefix = IS_THIS_WINDOWS ? "windows" : "linux";
+        String propPrefix = (IS_THIS_WINDOWS ? "windows" : "linux") + (mode != null ? "." + mode : "");
         if (timeToFirstOKRequest != SKIP) {
             long timeToFirstOKRequestThresholdMs = app.thresholdProperties.get(propPrefix + ".time.to.first.ok.request.threshold.ms");
             assertTrue(timeToFirstOKRequest <= timeToFirstOKRequestThresholdMs,
-                    "Application " + app + " took " + timeToFirstOKRequest
+                    "Application " + app + (mode != null ? " in mode " + mode : "") + " took " + timeToFirstOKRequest
                             + " ms to get the first OK request, which is over " +
                             timeToFirstOKRequestThresholdMs + " ms threshold.");
         }
         if (rssKb != SKIP) {
             long rssThresholdKb = app.thresholdProperties.get(propPrefix + ".RSS.threshold.kB");
             assertTrue(rssKb <= rssThresholdKb,
-                    "Application " + app + " consumed " + rssKb + " kB, which is over " +
+                    "Application " + app + (mode != null ? " in mode " + mode : "") + " consumed " + rssKb + " kB, which is over " +
                             rssThresholdKb + " kB threshold.");
         }
+        if (timeToFinishMs != SKIP) {
+            long timeToFinishThresholdMs = app.thresholdProperties.get(propPrefix + ".time.to.finish.threshold.ms");
+            assertTrue(timeToFinishMs <= timeToFinishThresholdMs,
+                    "Application " + app + (mode != null ? " in mode " + mode : "") + " took " + timeToFinishMs
+                            + " ms to finish, which is over " +
+                            timeToFinishThresholdMs + " ms threshold.");
+        }
+    }
+
+    public static void checkThreshold(Apps app, long rssKb, long timeToFirstOKRequest) {
+        checkThreshold(app, null, rssKb, timeToFirstOKRequest, SKIP);
     }
 
     public static void archiveLog(String testClass, String testMethod, File log) throws IOException {

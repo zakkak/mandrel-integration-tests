@@ -68,6 +68,11 @@ public enum Apps {
             URLContent.NONE,
             WhitelistLogLines.NONE,
             BuildAndRunCmds.TIMEZONES,
+            ContainerNames.NONE),
+    DEBUG_SYMBOLS_SMOKE("apps" + File.separator + "debug-symbols-smoke",
+            URLContent.NONE,
+            WhitelistLogLines.NONE,
+            BuildAndRunCmds.DEBUG_SYMBOLS_SMOKE,
             ContainerNames.NONE);
 
     public final String dir;
