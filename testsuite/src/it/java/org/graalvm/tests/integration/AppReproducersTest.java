@@ -341,6 +341,91 @@ public class AppReproducersTest {
         }
     }
 
+    @Test
+    @Tag("debugSymbolsQuarkus")
+    @DisabledOnOs({OS.WINDOWS})
+    public void debugSymbolsQuarkus(TestInfo testInfo) throws IOException, InterruptedException {
+        Apps app = Apps.DEBUG_QUARKUS_FULL_MICROPROFILE;
+        LOGGER.info("Testing app: " + app.toString());
+        File processLog = null;
+        StringBuilder report = new StringBuilder();
+        File appDir = new File(BASE_DIR + File.separator + app.dir);
+        String cn = testInfo.getTestClass().get().getCanonicalName();
+        String mn = testInfo.getTestMethod().get().getName();
+        try {
+            // Cleanup
+            Commands.cleanTarget(app);
+            Files.createDirectories(Paths.get(appDir.getAbsolutePath() + File.separator + "logs"));
+
+            // Build
+            processLog = new File(appDir.getAbsolutePath() + File.separator + "logs" + File.separator + "build-and-run.log");
+            builderRoutine(app.buildAndRunCmds.cmds.length - 1, app, report, cn, mn, appDir, processLog);
+
+            final ProcessBuilder processBuilder = new ProcessBuilder("gdb", "./target/quarkus-runner");
+            Map<String, String> envA = processBuilder.environment();
+            envA.put("PATH", System.getenv("PATH"));
+            processBuilder.directory(appDir)
+                    .redirectErrorStream(true);
+            final Process process = processBuilder.start();
+            final ExecutorService esvc = Executors.newCachedThreadPool();
+            final StringBuffer stringBuffer = new StringBuffer();
+            final Runnable reader = () -> {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        stringBuffer.append(line);
+                        stringBuffer.append('\n');
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            };
+            esvc.submit(reader);
+
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {
+                assertTrue(waitForBufferToMatch(stringBuffer,
+                        Pattern.compile(".*Reading symbols from.*quarkus-runner.debug.*done.*", Pattern.DOTALL),
+                        3000, 500, TimeUnit.MILLISECONDS),
+                        "GDB session did not start well. Check the names, paths... Content was: " + stringBuffer.toString());
+                Logs.appendln(report, appDir.getAbsolutePath());
+                Logs.appendlnSection(report, String.join(" ", processBuilder.command()));
+                Logs.appendln(report, stringBuffer.toString());
+
+                writer.write("set confirm off\n");
+                writer.flush();
+
+                // This is a necessary inconvenience at the time of writing
+                writer.write("set directories " +
+                        appDir.getAbsolutePath() + "/target/quarkus-native-image-source-jar/sources/:" +
+                        appDir.getAbsolutePath() + "/target/quarkus-native-image-source-jar/sources/src/\n");
+                writer.flush();
+
+                Stream.of(GDBSession.DEBUG_QUARKUS_FULL_MICROPROFILE.gdbOutput).forEach(cp -> {
+                            stringBuffer.delete(0, stringBuffer.length());
+                            try {
+                                writer.write(cp.c);
+                                writer.flush();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            boolean m = waitForBufferToMatch(stringBuffer, cp.p, 10, 1, TimeUnit.SECONDS);
+                            Logs.appendlnSection(report, cp.c);
+                            Logs.appendln(report, stringBuffer.toString());
+                            assertTrue(m, "Command '" + cp.c.trim() + "' did not match the expected pattern '" +
+                                    cp.p.pattern() + "'. Output was: " + stringBuffer.toString());
+                        }
+                );
+
+                writer.write("q\n");
+                writer.flush();
+            }
+            process.waitFor(1, TimeUnit.SECONDS);
+            Commands.processStopper(process, true);
+            Logs.checkLog(cn, mn, app, processLog);
+        } finally {
+            cleanup(null, cn, mn, processLog, report, app);
+        }
+    }
 
     public static void builderRoutine(int steps, Apps app, StringBuilder report, String cn, String mn, File appDir, File processLog) throws InterruptedException {
         // The last command is reserved for running it

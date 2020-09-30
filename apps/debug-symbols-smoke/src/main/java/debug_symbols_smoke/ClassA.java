@@ -20,6 +20,7 @@
 package debug_symbols_smoke;
 
 /**
+ * !!! DO NOT TOUCH THE SOURCE WITHOUT EDITING GDBSession.java !!!
  * @author Michal Karm Babacek <karm@redhat.com>
  */
 public class ClassA {

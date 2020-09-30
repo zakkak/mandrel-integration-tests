@@ -37,6 +37,11 @@ public enum BuildAndRunCmds {
             new String[]{"mvn", "clean", "compile", "package", "-Pnative"},
             new String[]{Commands.IS_THIS_WINDOWS ? "target\\quarkus-runner" : "./target/quarkus-runner"}
     }),
+    DEBUG_QUARKUS_FULL_MICROPROFILE(new String[][]{
+            new String[]{"mvn", "clean", "compile", "package", "-Pnative", "-Dquarkus.native.debug.enabled=true"},
+            new String[]{"mvn", "dependency:sources"},
+            new String[]{Commands.IS_THIS_WINDOWS ? "target\\quarkus-runner" : "./target/quarkus-runner"}
+    }),
     QUARKUS_BUILDER_IMAGE_ENCODING(new String[][]{
             new String[]{"mvn", "clean", "package", "-Pnative", "-Dquarkus.native.container-build=true",
                     "-Dquarkus.native.container-runtime=" + CONTAINER_RUNTIME,

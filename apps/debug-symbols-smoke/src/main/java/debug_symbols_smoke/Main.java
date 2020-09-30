@@ -33,14 +33,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This is a dummy example code to test some aspects of native-image debug capabilities
- *
+ * !!! DO NOT TOUCH THE SOURCE WITHOUT EDITING GDBSession.java !!!
  * Reads lines of text from stdin.
  * Creates instances with numbers and strings as attributes.
  * Stores those instances in a list.
  * Iterates over the list one by one and adds to ByteArray
  * Computes hash of the whole huge thing
  * Writes down the hash
- *
+ * !!! DO NOT TOUCH THE SOURCE WITHOUT EDITING GDBSession.java !!!
  * @author Michal Karm Babacek <karm@redhat.com>
  */
 public class Main {
