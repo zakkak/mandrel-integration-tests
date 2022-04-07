@@ -24,8 +24,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import org.jboss.resteasy.annotations.jaxrs.PathParam;
-
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.Vertx;
 
@@ -38,7 +36,7 @@ public class GreetingResource {
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     @Path("{name}")
-    public Uni<String> greeting(@PathParam String name) {
+    public Uni<String> greeting(String name) {
         return Uni.createFrom().emitter(emitter -> {
             long start = System.nanoTime();
             vertx.setTimer(10, l -> {
